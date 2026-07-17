@@ -60,6 +60,7 @@ export default function App() {
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const callUnsubsRef = useRef([]);
+  const callStartTimeRef = useRef(null);
 
   // ---- watch auth state ----
   useEffect(() => {
@@ -179,6 +180,37 @@ export default function App() {
     return () => unsub();
   }, [currentUid, callStatus]);
 
+  // ---- attach streams to video elements once they mount ----
+  useEffect(() => {
+    if (callStatus !== 'idle') {
+      if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
+      if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStreamRef.current;
+    }
+  }, [callStatus, callIsVideo]);
+
+  const writeCallLog = async (data, endReason) => {
+    try {
+      const id = convoId(data.from, data.to);
+      let status, duration = null;
+      if (callStartTimeRef.current) {
+        status = 'completed';
+        duration = Math.round((Date.now() - callStartTimeRef.current) / 1000);
+      } else {
+        status = endReason === 'rejected' ? 'declined' : 'missed';
+      }
+      await addDoc(collection(db, 'conversations', id, 'messages'), {
+        from: data.from,
+        fromName: data.fromName,
+        type: 'call',
+        video: data.video,
+        callStatus: status,
+        duration,
+        createdAt: serverTimestamp(),
+      });
+    } catch {}
+    callStartTimeRef.current = null;
+  };
+
   const cleanupCall = useCallback(() => {
     callUnsubsRef.current.forEach((u) => u());
     callUnsubsRef.current = [];
@@ -250,12 +282,14 @@ export default function App() {
         const data = snap.data();
         if (!data) return;
         if (data.status === 'ended' || data.status === 'rejected') {
+          writeCallLog(data, data.status);
           cleanupCall();
           return;
         }
         if (!pc.currentRemoteDescription && data.answer) {
           pc.setRemoteDescription(new RTCSessionDescription(data.answer));
           setCallStatus('in-call');
+          callStartTimeRef.current = Date.now();
         }
       });
       callUnsubsRef.current.push(unsubCall);
@@ -351,6 +385,19 @@ export default function App() {
   const formatTime = (ts) => {
     if (!ts?.toDate) return '';
     return ts.toDate().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatDuration = (sec) => {
+    if (!sec && sec !== 0) return '';
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const callLabel = (m) => {
+    if (m.callStatus === 'completed') return `${m.video ? 'Video' : 'Audio'} call · ${formatDuration(m.duration)}`;
+    if (m.callStatus === 'declined') return 'Call declined';
+    return 'Missed call';
   };
 
   // ================= RENDER =================
@@ -516,6 +563,17 @@ export default function App() {
               )}
               {messages.map((m, i) => {
                 const mine = m.from === currentUid;
+                if (m.type === 'call') {
+                  return (
+                    <div key={i} className="flex justify-center">
+                      <div className="flex items-center gap-2 bg-[#16233A] border border-[#2A3B54] rounded-full px-4 py-1.5 text-[#8A97AC] text-xs">
+                        {m.video ? <Video size={13} /> : <Phone size={13} />}
+                        {callLabel(m)}
+                        <span className="opacity-60">· {formatTime(m.createdAt)}</span>
+                      </div>
+                    </div>
+                  );
+                }
                 return (
                   <div key={i} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                     <div
@@ -575,6 +633,17 @@ export default function App() {
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
             {messages.map((m, i) => {
               const mine = m.from === currentUid;
+              if (m.type === 'call') {
+                return (
+                  <div key={i} className="flex justify-center">
+                    <div className="flex items-center gap-2 bg-[#16233A] border border-[#2A3B54] rounded-full px-3.5 py-1.5 text-[#8A97AC] text-xs">
+                      {m.video ? <Video size={12} /> : <Phone size={12} />}
+                      {callLabel(m)}
+                      <span className="opacity-60">· {formatTime(m.createdAt)}</span>
+                    </div>
+                  </div>
+                );
+              }
               return (
                 <div key={i} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                   <div
