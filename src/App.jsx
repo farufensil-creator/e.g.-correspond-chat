@@ -45,6 +45,8 @@ export default function App() {
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState('');
   const [authLoading, setAuthLoading] = useState(true);
+  const [hiddenIds, setHiddenIds] = useState(new Set());
+  const [selectedMsgId, setSelectedMsgId] = useState(null);
   const scrollRef = useRef(null);
 
   // ---- calling state ----
@@ -90,6 +92,20 @@ export default function App() {
     return () => unsub();
   }, [currentUid]);
 
+  // ---- load "deleted for me" list from this browser's storage ----
+  useEffect(() => {
+    if (!currentUid) {
+      setHiddenIds(new Set());
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(`correspond_hidden_${currentUid}`);
+      setHiddenIds(raw ? new Set(JSON.parse(raw)) : new Set());
+    } catch {
+      setHiddenIds(new Set());
+    }
+  }, [currentUid]);
+
   // ---- live messages for active conversation ----
   useEffect(() => {
     if (!activeContact || !currentUid) return;
@@ -99,7 +115,7 @@ export default function App() {
       orderBy('createdAt', 'asc')
     );
     const unsub = onSnapshot(q, (snap) => {
-      setMessages(snap.docs.map((d) => d.data()));
+      setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
     return () => unsub();
   }, [activeContact, currentUid]);
@@ -166,6 +182,30 @@ export default function App() {
       text,
       createdAt: serverTimestamp(),
     });
+  };
+
+  const hideForMe = (messageId) => {
+    setHiddenIds((prev) => {
+      const next = new Set(prev);
+      next.add(messageId);
+      try {
+        localStorage.setItem(`correspond_hidden_${currentUid}`, JSON.stringify([...next]));
+      } catch {}
+      return next;
+    });
+    setSelectedMsgId(null);
+  };
+
+  const deleteForEveryone = async (messageId) => {
+    if (!activeContact) return;
+    const id = convoId(currentUid, activeContact.uid);
+    try {
+      await updateDoc(doc(db, 'conversations', id, 'messages', messageId), {
+        deleted: true,
+        text: '',
+      });
+    } catch {}
+    setSelectedMsgId(null);
   };
 
   // ---- listen for incoming calls ----
@@ -561,11 +601,11 @@ export default function App() {
                   Abhi koi message nahi. Sabse pehla message aap hi bhejein.
                 </p>
               )}
-              {messages.map((m, i) => {
+              {messages.filter((m) => !hiddenIds.has(m.id)).map((m) => {
                 const mine = m.from === currentUid;
                 if (m.type === 'call') {
                   return (
-                    <div key={i} className="flex justify-center">
+                    <div key={m.id} className="flex justify-center">
                       <div className="flex items-center gap-2 bg-[#16233A] border border-[#2A3B54] rounded-full px-4 py-1.5 text-[#8A97AC] text-xs">
                         {m.video ? <Video size={13} /> : <Phone size={13} />}
                         {callLabel(m)}
@@ -575,17 +615,32 @@ export default function App() {
                   );
                 }
                 return (
-                  <div key={i} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                  <div key={m.id} className={`flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
                     <div
-                      className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${
+                      onClick={() => setSelectedMsgId(selectedMsgId === m.id ? null : m.id)}
+                      className={`max-w-[70%] rounded-2xl px-4 py-2.5 cursor-pointer ${
                         mine ? 'bg-[#E0A458] text-[#0F1B2D] rounded-br-sm' : 'bg-[#2A3B54] text-[#F5F1E8] rounded-bl-sm'
                       }`}
                     >
-                      <div className="text-sm leading-relaxed break-words">{m.text}</div>
+                      <div className={`text-sm leading-relaxed break-words ${m.deleted ? 'italic opacity-70' : ''}`}>
+                        {m.deleted ? 'Ye message delete kar diya gaya' : m.text}
+                      </div>
                       <div className={`text-[10px] mt-1 tracking-wide ${mine ? 'text-[#0F1B2D]/60' : 'text-[#8A97AC]'}`}>
                         {formatTime(m.createdAt)}
                       </div>
                     </div>
+                    {selectedMsgId === m.id && (
+                      <div className="flex gap-3 mt-1 text-[11px]">
+                        <button onClick={() => hideForMe(m.id)} className="text-[#8A97AC] underline">
+                          Delete for me
+                        </button>
+                        {mine && !m.deleted && (
+                          <button onClick={() => deleteForEveryone(m.id)} className="text-[#E0785A] underline">
+                            Delete for everyone
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -631,11 +686,11 @@ export default function App() {
             )}
           </div>
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-            {messages.map((m, i) => {
+            {messages.filter((m) => !hiddenIds.has(m.id)).map((m) => {
               const mine = m.from === currentUid;
               if (m.type === 'call') {
                 return (
-                  <div key={i} className="flex justify-center">
+                  <div key={m.id} className="flex justify-center">
                     <div className="flex items-center gap-2 bg-[#16233A] border border-[#2A3B54] rounded-full px-3.5 py-1.5 text-[#8A97AC] text-xs">
                       {m.video ? <Video size={12} /> : <Phone size={12} />}
                       {callLabel(m)}
@@ -645,17 +700,32 @@ export default function App() {
                 );
               }
               return (
-                <div key={i} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                <div key={m.id} className={`flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
                   <div
+                    onClick={() => setSelectedMsgId(selectedMsgId === m.id ? null : m.id)}
                     className={`max-w-[75%] rounded-2xl px-3.5 py-2 ${
                       mine ? 'bg-[#E0A458] text-[#0F1B2D] rounded-br-sm' : 'bg-[#2A3B54] text-[#F5F1E8] rounded-bl-sm'
                     }`}
                   >
-                    <div className="text-sm break-words">{m.text}</div>
+                    <div className={`text-sm break-words ${m.deleted ? 'italic opacity-70' : ''}`}>
+                      {m.deleted ? 'Ye message delete kar diya gaya' : m.text}
+                    </div>
                     <div className={`text-[10px] mt-1 ${mine ? 'text-[#0F1B2D]/60' : 'text-[#8A97AC]'}`}>
                       {formatTime(m.createdAt)}
                     </div>
                   </div>
+                  {selectedMsgId === m.id && (
+                    <div className="flex gap-3 mt-1 text-[11px]">
+                      <button onClick={() => hideForMe(m.id)} className="text-[#8A97AC] underline">
+                        Delete for me
+                      </button>
+                      {mine && !m.deleted && (
+                        <button onClick={() => deleteForEveryone(m.id)} className="text-[#E0785A] underline">
+                          Delete for everyone
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
