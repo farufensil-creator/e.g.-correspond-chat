@@ -561,6 +561,16 @@ export default function App() {
               {activeContact.username.slice(0, 2).toUpperCase()}
             </div>
             <div className="text-[#F5F1E8] font-medium text-sm">{activeContact.username}</div>
+            {callStatus === 'idle' && (
+              <div className="flex items-center gap-4 ml-auto mr-1">
+                <button onClick={() => startCall(false)} className="text-[#8A97AC]">
+                  <Phone size={19} />
+                </button>
+                <button onClick={() => startCall(true)} className="text-[#8A97AC]">
+                  <Video size={20} />
+                </button>
+              </div>
+            )}
           </div>
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
             {messages.map((m, i) => {
