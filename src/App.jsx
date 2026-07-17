@@ -8,15 +8,24 @@ import {
 import {
   doc,
   setDoc,
+  updateDoc,
   collection,
   query,
+  where,
   orderBy,
   onSnapshot,
   addDoc,
   serverTimestamp,
 } from 'firebase/firestore';
 import { auth, db, usernameToEmail } from './firebase.js';
-import { Send, LogOut, MessageCircle, UserPlus, LogIn, Circle } from 'lucide-react';
+import { Send, LogOut, MessageCircle, UserPlus, LogIn, Circle, Phone, Video, PhoneOff, Mic, MicOff } from 'lucide-react';
+
+const rtcConfig = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+  ],
+};
 
 function convoId(a, b) {
   return [a, b].sort().join('__');
@@ -37,6 +46,20 @@ export default function App() {
   const [draft, setDraft] = useState('');
   const [authLoading, setAuthLoading] = useState(true);
   const scrollRef = useRef(null);
+
+  // ---- calling state ----
+  const [callStatus, setCallStatus] = useState('idle'); // idle | calling | in-call
+  const [incomingCall, setIncomingCall] = useState(null);
+  const [currentCallId, setCurrentCallId] = useState(null);
+  const [callIsVideo, setCallIsVideo] = useState(false);
+  const [micOn, setMicOn] = useState(true);
+  const [callPeerName, setCallPeerName] = useState('');
+  const pcRef = useRef(null);
+  const localStreamRef = useRef(null);
+  const remoteStreamRef = useRef(null);
+  const localVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
+  const callUnsubsRef = useRef([]);
 
   // ---- watch auth state ----
   useEffect(() => {
@@ -142,6 +165,187 @@ export default function App() {
       text,
       createdAt: serverTimestamp(),
     });
+  };
+
+  // ---- listen for incoming calls ----
+  useEffect(() => {
+    if (!currentUid) return;
+    const q = query(collection(db, 'calls'), where('to', '==', currentUid), where('status', '==', 'ringing'));
+    const unsub = onSnapshot(q, (snap) => {
+      if (callStatus !== 'idle') return;
+      const docSnap = snap.docs[0];
+      setIncomingCall(docSnap ? { id: docSnap.id, ...docSnap.data() } : null);
+    });
+    return () => unsub();
+  }, [currentUid, callStatus]);
+
+  const cleanupCall = useCallback(() => {
+    callUnsubsRef.current.forEach((u) => u());
+    callUnsubsRef.current = [];
+    if (pcRef.current) {
+      pcRef.current.close();
+      pcRef.current = null;
+    }
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((t) => t.stop());
+      localStreamRef.current = null;
+    }
+    remoteStreamRef.current = null;
+    setCallStatus('idle');
+    setCurrentCallId(null);
+    setCallIsVideo(false);
+    setCallPeerName('');
+    setMicOn(true);
+  }, []);
+
+  const setupPeerConnection = () => {
+    const pc = new RTCPeerConnection(rtcConfig);
+    pcRef.current = pc;
+    const remoteStream = new MediaStream();
+    remoteStreamRef.current = remoteStream;
+    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
+    pc.ontrack = (event) => {
+      event.streams[0].getTracks().forEach((track) => remoteStream.addTrack(track));
+    };
+    return pc;
+  };
+
+  const startCall = async (withVideo) => {
+    if (!activeContact) return;
+    try {
+      const localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: withVideo });
+      localStreamRef.current = localStream;
+      if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
+
+      const pc = setupPeerConnection();
+      localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
+
+      const callDocRef = doc(collection(db, 'calls'));
+      const offerCandidates = collection(callDocRef, 'offerCandidates');
+      const answerCandidates = collection(callDocRef, 'answerCandidates');
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate) addDoc(offerCandidates, event.candidate.toJSON());
+      };
+
+      const offerDescription = await pc.createOffer();
+      await pc.setLocalDescription(offerDescription);
+
+      await setDoc(callDocRef, {
+        from: currentUid,
+        fromName: currentUsername,
+        to: activeContact.uid,
+        toName: activeContact.username,
+        video: withVideo,
+        status: 'ringing',
+        offer: { type: offerDescription.type, sdp: offerDescription.sdp },
+      });
+
+      setCurrentCallId(callDocRef.id);
+      setCallStatus('calling');
+      setCallIsVideo(withVideo);
+      setCallPeerName(activeContact.username);
+
+      const unsubCall = onSnapshot(callDocRef, (snap) => {
+        const data = snap.data();
+        if (!data) return;
+        if (data.status === 'ended' || data.status === 'rejected') {
+          cleanupCall();
+          return;
+        }
+        if (!pc.currentRemoteDescription && data.answer) {
+          pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+          setCallStatus('in-call');
+        }
+      });
+      callUnsubsRef.current.push(unsubCall);
+
+      const unsubAnswerCandidates = onSnapshot(answerCandidates, (snap) => {
+        snap.docChanges().forEach((change) => {
+          if (change.type === 'added') pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+        });
+      });
+      callUnsubsRef.current.push(unsubAnswerCandidates);
+    } catch (err) {
+      alert('Call shuru nahi ho payi: ' + err.message);
+      cleanupCall();
+    }
+  };
+
+  const acceptCall = async () => {
+    const callData = incomingCall;
+    setIncomingCall(null);
+    try {
+      const localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: callData.video });
+      localStreamRef.current = localStream;
+      if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
+
+      const pc = setupPeerConnection();
+      localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
+
+      const callDocRef = doc(db, 'calls', callData.id);
+      const offerCandidates = collection(callDocRef, 'offerCandidates');
+      const answerCandidates = collection(callDocRef, 'answerCandidates');
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate) addDoc(answerCandidates, event.candidate.toJSON());
+      };
+
+      await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
+      const answerDescription = await pc.createAnswer();
+      await pc.setLocalDescription(answerDescription);
+
+      await updateDoc(callDocRef, {
+        answer: { type: answerDescription.type, sdp: answerDescription.sdp },
+        status: 'in-call',
+      });
+
+      setCurrentCallId(callDocRef.id);
+      setCallStatus('in-call');
+      setCallIsVideo(callData.video);
+      setCallPeerName(callData.fromName);
+
+      const unsubOfferCandidates = onSnapshot(offerCandidates, (snap) => {
+        snap.docChanges().forEach((change) => {
+          if (change.type === 'added') pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+        });
+      });
+      callUnsubsRef.current.push(unsubOfferCandidates);
+
+      const unsubCallDoc = onSnapshot(callDocRef, (snap) => {
+        const data = snap.data();
+        if (!data || data.status === 'ended') cleanupCall();
+      });
+      callUnsubsRef.current.push(unsubCallDoc);
+    } catch (err) {
+      alert('Call accept nahi ho payi: ' + err.message);
+      cleanupCall();
+    }
+  };
+
+  const rejectCall = async () => {
+    if (incomingCall) {
+      try {
+        await updateDoc(doc(db, 'calls', incomingCall.id), { status: 'rejected' });
+      } catch {}
+    }
+    setIncomingCall(null);
+  };
+
+  const hangUp = async () => {
+    if (currentCallId) {
+      try {
+        await updateDoc(doc(db, 'calls', currentCallId), { status: 'ended' });
+      } catch {}
+    }
+    cleanupCall();
+  };
+
+  const toggleMic = () => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getAudioTracks().forEach((t) => (t.enabled = !micOn));
+      setMicOn((v) => !v);
+    }
   };
 
   const formatTime = (ts) => {
@@ -286,9 +490,21 @@ export default function App() {
                 {activeContact.username.slice(0, 2).toUpperCase()}
               </div>
               <div className="text-[#F5F1E8] font-medium">{activeContact.username}</div>
-              <div className="flex items-center gap-1 text-[#8A97AC] text-xs ml-auto">
-                <Circle size={7} className="fill-[#E0A458] text-[#E0A458]" />
-                live
+              <div className="flex items-center gap-3 ml-auto">
+                {callStatus === 'idle' && (
+                  <>
+                    <button onClick={() => startCall(false)} title="Audio call" className="text-[#8A97AC] hover:text-[#E0A458] transition-colors">
+                      <Phone size={18} />
+                    </button>
+                    <button onClick={() => startCall(true)} title="Video call" className="text-[#8A97AC] hover:text-[#E0A458] transition-colors">
+                      <Video size={19} />
+                    </button>
+                  </>
+                )}
+                <div className="flex items-center gap-1 text-[#8A97AC] text-xs">
+                  <Circle size={7} className="fill-[#E0A458] text-[#E0A458]" />
+                  live
+                </div>
               </div>
             </div>
 
@@ -379,6 +595,80 @@ export default function App() {
               className="bg-[#E0A458] disabled:opacity-40 text-[#0F1B2D] rounded-full w-9 h-9 flex items-center justify-center shrink-0"
             >
               <Send size={15} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Incoming call overlay */}
+      {incomingCall && (
+        <div className="fixed inset-0 bg-[#0F1B2D]/97 flex flex-col items-center justify-center z-50 p-6">
+          <div className="w-20 h-20 rounded-full bg-[#2A3B54] flex items-center justify-center text-[#F5F1E8] text-2xl font-medium mb-5">
+            {incomingCall.fromName.slice(0, 2).toUpperCase()}
+          </div>
+          <div className="text-[#F5F1E8] text-lg font-medium mb-1">{incomingCall.fromName}</div>
+          <div className="text-[#8A97AC] text-sm mb-10">
+            {incomingCall.video ? 'Video call...' : 'Audio call...'}
+          </div>
+          <div className="flex items-center gap-8">
+            <button
+              onClick={rejectCall}
+              className="w-14 h-14 rounded-full bg-[#E0785A] flex items-center justify-center text-[#0F1B2D]"
+            >
+              <PhoneOff size={22} />
+            </button>
+            <button
+              onClick={acceptCall}
+              className="w-14 h-14 rounded-full bg-[#7FBF7F] flex items-center justify-center text-[#0F1B2D]"
+            >
+              <Phone size={22} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Active / outgoing call overlay */}
+      {callStatus !== 'idle' && (
+        <div className="fixed inset-0 bg-[#0F1B2D] flex flex-col items-center justify-center z-50">
+          {callIsVideo ? (
+            <div className="relative w-full h-full">
+              <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover bg-[#16233A]" />
+              <video
+                ref={localVideoRef}
+                autoPlay
+                playsInline
+                muted
+                className="absolute bottom-24 right-4 w-28 h-40 object-cover rounded-lg border border-[#2A3B54]"
+              />
+              <div className="absolute top-6 left-0 right-0 text-center">
+                <div className="text-[#F5F1E8] font-medium">{callPeerName}</div>
+                <div className="text-[#8A97AC] text-xs">{callStatus === 'calling' ? 'Calling…' : 'In call'}</div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <video ref={remoteVideoRef} autoPlay playsInline className="hidden" />
+              <video ref={localVideoRef} autoPlay playsInline muted className="hidden" />
+              <div className="w-24 h-24 rounded-full bg-[#2A3B54] flex items-center justify-center text-[#F5F1E8] text-3xl font-medium mb-5">
+                {callPeerName.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="text-[#F5F1E8] text-lg font-medium mb-1">{callPeerName}</div>
+              <div className="text-[#8A97AC] text-sm mb-10">{callStatus === 'calling' ? 'Calling…' : 'In call'}</div>
+            </>
+          )}
+
+          <div className="absolute bottom-10 left-0 right-0 flex items-center justify-center gap-6">
+            <button
+              onClick={toggleMic}
+              className="w-12 h-12 rounded-full bg-[#2A3B54] flex items-center justify-center text-[#F5F1E8]"
+            >
+              {micOn ? <Mic size={19} /> : <MicOff size={19} />}
+            </button>
+            <button
+              onClick={hangUp}
+              className="w-14 h-14 rounded-full bg-[#E0785A] flex items-center justify-center text-[#0F1B2D]"
+            >
+              <PhoneOff size={22} />
             </button>
           </div>
         </div>
