@@ -1,15 +1,317 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="hi">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Correspond — Chat</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-    <script src="https://cdn.tailwindcss.com"></script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dil Se Chat</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Jost:wght@300;400;500;600&display=swap');
+
+  :root{
+    --maroon:#3a0d16;
+    --wine:#5c1a2b;
+    --rose:#c96b7a;
+    --blush:#f2d9dc;
+    --gold:#c8a15c;
+    --cream:#fbf2ee;
+    --bubble-me:#c96b7a;
+    --bubble-them:#4a1420;
+    --ink:#2a0a10;
+  }
+
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:'Jost',sans-serif;
+    background:linear-gradient(160deg,#2a0a10,#1c0509);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    padding:1rem;
+  }
+
+  .phone{
+    width:100%;
+    max-width:420px;
+    height:92vh;
+    max-height:840px;
+    background:var(--cream);
+    border-radius:28px;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    box-shadow:0 30px 80px rgba(0,0,0,.55);
+    position:relative;
+  }
+
+  /* ---------- header ---------- */
+  .chat-header{
+    background:linear-gradient(135deg, var(--maroon), var(--wine));
+    color:var(--blush);
+    display:flex;
+    align-items:center;
+    gap:.8rem;
+    padding:1rem 1rem;
+    flex-shrink:0;
+  }
+  .back-arrow{
+    font-size:1.3rem;
+    color:var(--gold);
+    cursor:pointer;
+    line-height:1;
+  }
+  .avatar{
+    width:38px;height:38px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, var(--rose), var(--wine));
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Cormorant Garamond',serif;
+    font-style:italic;
+    font-size:1.1rem;
+    flex-shrink:0;
+  }
+  .header-info{flex:1; min-width:0;}
+  .header-info .name{
+    font-family:'Cormorant Garamond',serif;
+    font-size:1.15rem;
+    font-style:italic;
+  }
+  .header-info .status{
+    font-size:.68rem;
+    letter-spacing:.08em;
+    color:var(--gold);
+    text-transform:uppercase;
+  }
+  .icon-btn{
+    width:36px;height:36px;
+    display:flex;align-items:center;justify-content:center;
+    border-radius:50%;
+    cursor:pointer;
+    color:var(--gold);
+    transition:background .2s ease;
+    flex-shrink:0;
+  }
+  .icon-btn:hover{background:rgba(200,161,92,.15);}
+  .icon-btn svg{width:19px;height:19px;}
+
+  /* ---------- call banner (shows briefly on call icon click) ---------- */
+  .call-banner{
+    position:absolute;
+    top:0;left:0;right:0;bottom:0;
+    background:linear-gradient(160deg, var(--maroon), #1c0509);
+    color:var(--blush);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:1.2rem;
+    z-index:20;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .35s ease;
+    text-align:center;
+    padding:2rem;
+  }
+  .call-banner.show{opacity:1; pointer-events:all;}
+  .call-banner .avatar{width:96px;height:96px;font-size:2.4rem;}
+  .call-banner h2{
+    font-family:'Cormorant Garamond',serif;
+    font-style:italic;
+    font-weight:500;
+    font-size:1.7rem;
+  }
+  .call-banner .calling-label{
+    font-size:.72rem;
+    letter-spacing:.3em;
+    text-transform:uppercase;
+    color:var(--gold);
+    animation:pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:.4;}50%{opacity:1;}}
+  .end-call{
+    margin-top:1.5rem;
+    width:56px;height:56px;
+    border-radius:50%;
+    background:#b3364a;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    transform:rotate(135deg);
+    box-shadow:0 8px 24px rgba(179,54,74,.5);
+  }
+  .end-call svg{width:24px;height:24px;color:#fff;}
+
+  /* ---------- messages ---------- */
+  .messages{
+    flex:1;
+    overflow-y:auto;
+    padding:1.2rem 1rem;
+    display:flex;
+    flex-direction:column;
+    gap:.55rem;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(201,107,122,.08), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(200,161,92,.08), transparent 40%),
+      var(--cream);
+  }
+  .bubble{
+    max-width:75%;
+    padding:.65rem .95rem;
+    border-radius:16px;
+    font-size:.95rem;
+    line-height:1.4;
+    position:relative;
+    animation:pop .25s ease;
+  }
+  @keyframes pop{ from{transform:scale(.9); opacity:0;} to{transform:scale(1); opacity:1;} }
+  .bubble.them{
+    align-self:flex-start;
+    background:var(--bubble-them);
+    color:var(--blush);
+    border-bottom-left-radius:4px;
+  }
+  .bubble.me{
+    align-self:flex-end;
+    background:var(--bubble-me);
+    color:#fff;
+    border-bottom-right-radius:4px;
+  }
+  .bubble .time{
+    display:block;
+    font-size:.62rem;
+    opacity:.7;
+    margin-top:.3rem;
+    text-align:right;
+  }
+
+  /* ---------- input bar ---------- */
+  .input-bar{
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    gap:.6rem;
+    padding:.7rem .9rem;
+    background:var(--cream);
+    border-top:1px solid rgba(200,161,92,.25);
+  }
+  .input-bar input{
+    flex:1;
+    border:none;
+    outline:none;
+    background:var(--blush);
+    border-radius:22px;
+    padding:.7rem 1.1rem;
+    font-family:'Jost',sans-serif;
+    font-size:.9rem;
+    color:var(--ink);
+  }
+  .input-bar input::placeholder{color:#a8798a;}
+  .send-btn{
+    width:42px;height:42px;
+    border-radius:50%;
+    background:linear-gradient(135deg, var(--rose), var(--wine));
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    border:none;
+    flex-shrink:0;
+    transition:transform .15s ease;
+  }
+  .send-btn:active{transform:scale(.9);}
+  .send-btn svg{width:18px;height:18px;color:#fff;}
+
+  ::-webkit-scrollbar{width:0;}
+</style>
+</head>
+<body>
+
+<div class="phone">
+
+  <!-- CALL FULLSCREEN OVERLAY -->
+  <div class="call-banner" id="callBanner">
+    <div class="avatar">S</div>
+    <h2 id="callTitle">Calling...</h2>
+    <div class="calling-label" id="callLabel">Ringing</div>
+    <div class="end-call" id="endCall">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8c1.4 2.8 3.8 5.2 6.6 6.6l2.2-2.2c.3-.3.7-.4 1.1-.2 1.2.4 2.5.6 3.8.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.9 21 3 13.1 3 3.7c0-.6.4-1 1-1h3.4c.6 0 1 .4 1 1 0 1.3.2 2.6.6 3.8.1.4 0 .8-.2 1.1L6.6 10.8z"/></svg>
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <div class="chat-header">
+    <div class="back-arrow">&#8592;</div>
+    <div class="avatar">S</div>
+    <div class="header-info">
+      <div class="name">Sheshthakur</div>
+      <div class="status" id="statusText">Online</div>
+    </div>
+    <div class="icon-btn" id="callIcon" title="Voice call">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8c1.4 2.8 3.8 5.2 6.6 6.6l2.2-2.2c.3-.3.7-.4 1.1-.2 1.2.4 2.5.6 3.8.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.9 21 3 13.1 3 3.7c0-.6.4-1 1-1h3.4c.6 0 1 .4 1 1 0 1.3.2 2.6.6 3.8.1.4 0 .8-.2 1.1L6.6 10.8z"/></svg>
+    </div>
+    <div class="icon-btn" id="videoIcon" title="Video call">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+    </div>
+  </div>
+
+  <!-- MESSAGES -->
+  <div class="messages" id="messages">
+    <div class="bubble them">Hello<span class="time">01:56 pm</span></div>
+    <div class="bubble them">Ham sherag<span class="time">01:57 pm</span></div>
+    <div class="bubble them">💖💔😘<span class="time">01:57 pm</span></div>
+    <div class="bubble me">Ha 😂<span class="time">01:58 pm</span></div>
+    <div class="bubble me">This work for you<span class="time">01:58 pm</span></div>
+  </div>
+
+  <!-- INPUT -->
+  <div class="input-bar">
+    <input type="text" id="msgInput" placeholder="Message likhein...">
+    <button class="send-btn" id="sendBtn">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 20l18-8L3 4v6l12 2-12 2v6z"/></svg>
+    </button>
+  </div>
+
+</div>
+
+<script>
+  const messages = document.getElementById('messages');
+  const input = document.getElementById('msgInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const callIcon = document.getElementById('callIcon');
+  const videoIcon = document.getElementById('videoIcon');
+  const callBanner = document.getElementById('callBanner');
+  const callTitle = document.getElementById('callTitle');
+  const callLabel = document.getElementById('callLabel');
+  const endCall = document.getElementById('endCall');
+
+  function timeNow(){
+    const d = new Date();
+    let h = d.getHours(), m = d.getMinutes();
+    const ampm = h >= 12 ? 'pm' : 'am';
+    h = h % 12; if(h === 0) h = 12;
+    m = m < 10 ? '0'+m : m;
+    return h + ':' + m + ' ' + ampm;
+  }
+
+  function sendMessage(){
+    const text = input.value.trim();
+    if(!text) return;
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble me';
+    bubble.innerHTML = text + '<span class="time">' + timeNow() + '</span>';
+    messages.appendChild(bubble);
+    messages.scrollTop = messages.scrollHeight;
+    input.value = '';
+  }
+
+  sendBtn.addEventListener('click', sendMessage);
+  input.addEventListener('keydown', e => { if(e.key === 'Enter') sendMessage(); });
+
+  function startCall(type){
+    callTitle.textContent = 'Calling...';
+    callLabel.textContent = type === 'video' ? 'Video Ringing' : 'Voice Ringing';
+    callBanner.classList.add('show');
+  }
+  callIcon.addEventListener('click', () => startCall('voice'));
+  videoIcon.addEventListener('click', () => startCall('video'));
+  endCall.addEventListener('click', () => callBanner.classList.remove('show'));
+</script>
+
+</body>
 </html>
