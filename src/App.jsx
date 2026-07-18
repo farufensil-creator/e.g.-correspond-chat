@@ -18,7 +18,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { auth, db, usernameToEmail } from './firebase.js';
-import { Send, LogOut, MessageCircle, UserPlus, LogIn, Circle, Phone, Video, PhoneOff, Mic, MicOff } from 'lucide-react';
+import { Send, LogOut, MessageCircle, UserPlus, LogIn, Circle, Phone, Video, PhoneOff, Mic, MicOff, Paperclip, Square, X, Reply } from 'lucide-react';
 
 const rtcConfig = {
   iceServers: [
@@ -47,7 +47,12 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [hiddenIds, setHiddenIds] = useState(new Set());
   const [selectedMsgId, setSelectedMsgId] = useState(null);
+  const [replyTo, setReplyTo] = useState(null); // {id, preview, fromName}
+  const [recording, setRecording] = useState(false);
   const scrollRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const recordedChunksRef = useRef([]);
 
   // ---- calling state ----
   const [callStatus, setCallStatus] = useState('idle'); // idle | calling | in-call
@@ -63,6 +68,10 @@ export default function App() {
   const remoteVideoRef = useRef(null);
   const callUnsubsRef = useRef([]);
   const callStartTimeRef = useRef(null);
+  const [pipLarge, setPipLarge] = useState(false);
+  const pipContainerRef = useRef(null);
+  const pipElRef = useRef(null);
+  const pipDragState = useRef({ dragging: false, moved: false, startX: 0, startY: 0, baseX: 16, baseY: 16, x: 16, y: 16 });
 
   // ---- watch auth state ----
   useEffect(() => {
@@ -180,8 +189,129 @@ export default function App() {
       from: currentUid,
       fromName: currentUsername,
       text,
+      replyTo: replyTo || null,
       createdAt: serverTimestamp(),
     });
+    setReplyTo(null);
+  };
+
+  const buildReplyPreview = (m) => {
+    if (m.type === 'call') return callLabel(m);
+    if (m.type === 'image') return '📷 Photo';
+    if (m.type === 'audio') return '🎤 Voice message';
+    return (m.text || '').slice(0, 80);
+  };
+
+  const startReply = (m) => {
+    setReplyTo({
+      id: m.id,
+      preview: buildReplyPreview(m),
+      fromName: m.fromName || (m.from === currentUid ? currentUsername : activeContact?.username),
+    });
+    setSelectedMsgId(null);
+  };
+
+  const compressImage = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new window.Image();
+        img.onload = () => {
+          const maxDim = 900;
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round(height * (maxDim / width));
+              width = maxDim;
+            } else {
+              width = Math.round(width * (maxDim / height));
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.6));
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  const handleImagePick = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !activeContact) return;
+    try {
+      const dataUrl = await compressImage(file);
+      if (dataUrl.length > 900000) {
+        alert('Ye photo bahut badi hai. Thodi chhoti ya kam resolution wali photo try karein.');
+        return;
+      }
+      const id = convoId(currentUid, activeContact.uid);
+      await addDoc(collection(db, 'conversations', id, 'messages'), {
+        from: currentUid,
+        fromName: currentUsername,
+        type: 'image',
+        imageData: dataUrl,
+        replyTo: replyTo || null,
+        createdAt: serverTimestamp(),
+      });
+      setReplyTo(null);
+    } catch (err) {
+      alert('Photo bhejne mein dikkat hui: ' + err.message);
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      recordedChunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.onload = async () => {
+          const dataUrl = reader.result;
+          if (dataUrl.length > 900000) {
+            alert('Ye voice message bahut lamba hai. Thoda chhota (~20-30 second) rakhein.');
+            return;
+          }
+          if (!activeContact) return;
+          const id = convoId(currentUid, activeContact.uid);
+          await addDoc(collection(db, 'conversations', id, 'messages'), {
+            from: currentUid,
+            fromName: currentUsername,
+            type: 'audio',
+            audioData: dataUrl,
+            replyTo: replyTo || null,
+            createdAt: serverTimestamp(),
+          });
+          setReplyTo(null);
+        };
+        reader.readAsDataURL(blob);
+      };
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setRecording(true);
+    } catch (err) {
+      alert('Microphone access nahi mila: ' + err.message);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setRecording(false);
   };
 
   const hideForMe = (messageId) => {
@@ -227,6 +357,103 @@ export default function App() {
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStreamRef.current;
     }
   }, [callStatus, callIsVideo]);
+
+  // ---- position the draggable self-view (PiP) when a video call starts ----
+  useEffect(() => {
+    if (callStatus !== 'idle' && callIsVideo && pipContainerRef.current && pipElRef.current) {
+      const rect = pipContainerRef.current.getBoundingClientRect();
+      const w = pipElRef.current.offsetWidth;
+      const h = pipElRef.current.offsetHeight;
+      const x = rect.width - w - 16;
+      const y = rect.height - h - 110;
+      pipDragState.current.x = x;
+      pipDragState.current.y = y;
+      pipElRef.current.style.left = x + 'px';
+      pipElRef.current.style.top = y + 'px';
+    }
+  }, [callStatus, callIsVideo]);
+
+  // ---- re-clamp the PiP within bounds whenever its size toggles ----
+  useEffect(() => {
+    if (callStatus !== 'idle' && callIsVideo && pipContainerRef.current && pipElRef.current) {
+      const rect = pipContainerRef.current.getBoundingClientRect();
+      const w = pipElRef.current.offsetWidth;
+      const h = pipElRef.current.offsetHeight;
+      let { x, y } = pipDragState.current;
+      x = Math.min(Math.max(x, 8), Math.max(8, rect.width - w - 8));
+      y = Math.min(Math.max(y, 8), Math.max(8, rect.height - h - 8));
+      pipDragState.current.x = x;
+      pipDragState.current.y = y;
+      pipElRef.current.style.left = x + 'px';
+      pipElRef.current.style.top = y + 'px';
+    }
+  }, [pipLarge]);
+
+  const onPipStart = (clientX, clientY) => {
+    pipDragState.current.dragging = true;
+    pipDragState.current.moved = false;
+    pipDragState.current.startX = clientX;
+    pipDragState.current.startY = clientY;
+    pipDragState.current.baseX = pipDragState.current.x;
+    pipDragState.current.baseY = pipDragState.current.y;
+  };
+
+  const onPipMove = (clientX, clientY) => {
+    if (!pipDragState.current.dragging) return;
+    const dx = clientX - pipDragState.current.startX;
+    const dy = clientY - pipDragState.current.startY;
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) pipDragState.current.moved = true;
+    let x = pipDragState.current.baseX + dx;
+    let y = pipDragState.current.baseY + dy;
+    const rect = pipContainerRef.current?.getBoundingClientRect();
+    const w = pipElRef.current?.offsetWidth || 0;
+    const h = pipElRef.current?.offsetHeight || 0;
+    if (rect) {
+      x = Math.min(Math.max(x, 8), Math.max(8, rect.width - w - 8));
+      y = Math.min(Math.max(y, 8), Math.max(8, rect.height - h - 8));
+    }
+    pipDragState.current.x = x;
+    pipDragState.current.y = y;
+    if (pipElRef.current) {
+      pipElRef.current.style.left = x + 'px';
+      pipElRef.current.style.top = y + 'px';
+    }
+  };
+
+  const onPipEnd = () => {
+    const wasMoved = pipDragState.current.moved;
+    pipDragState.current.dragging = false;
+    if (!wasMoved) setPipLarge((v) => !v);
+  };
+
+  const onPipMouseDown = (e) => {
+    onPipStart(e.clientX, e.clientY);
+    const move = (ev) => onPipMove(ev.clientX, ev.clientY);
+    const up = () => {
+      onPipEnd();
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
+  const onPipTouchStart = (e) => {
+    const t = e.touches[0];
+    onPipStart(t.clientX, t.clientY);
+    const move = (ev) => {
+      ev.preventDefault();
+      const tt = ev.touches[0];
+      onPipMove(tt.clientX, tt.clientY);
+    };
+    const end = () => {
+      onPipEnd();
+      window.removeEventListener('touchmove', move);
+      window.removeEventListener('touchend', end);
+    };
+    window.addEventListener('touchmove', move, { passive: false });
+    window.addEventListener('touchend', end);
+  };
 
   const writeCallLog = async (data, endReason) => {
     try {
@@ -317,6 +544,7 @@ export default function App() {
       setCallStatus('calling');
       setCallIsVideo(withVideo);
       setCallPeerName(activeContact.username);
+      setPipLarge(false);
 
       const unsubCall = onSnapshot(callDocRef, (snap) => {
         const data = snap.data();
@@ -378,6 +606,7 @@ export default function App() {
       setCallStatus('in-call');
       setCallIsVideo(callData.video);
       setCallPeerName(callData.fromName);
+      setPipLarge(false);
 
       const unsubOfferCandidates = onSnapshot(offerCandidates, (snap) => {
         snap.docChanges().forEach((change) => {
@@ -622,15 +851,30 @@ export default function App() {
                         mine ? 'bg-[#E0A458] text-[#0F1B2D] rounded-br-sm' : 'bg-[#2A3B54] text-[#F5F1E8] rounded-bl-sm'
                       }`}
                     >
-                      <div className={`text-sm leading-relaxed break-words ${m.deleted ? 'italic opacity-70' : ''}`}>
-                        {m.deleted ? 'Ye message delete kar diya gaya' : m.text}
-                      </div>
+                      {m.replyTo && !m.deleted && (
+                        <div className={`mb-1.5 pl-2 border-l-2 text-xs opacity-80 ${mine ? 'border-[#0F1B2D]/50' : 'border-[#E0A458]'}`}>
+                          <div className="font-medium">{m.replyTo.fromName}</div>
+                          <div className="truncate max-w-[220px]">{m.replyTo.preview}</div>
+                        </div>
+                      )}
+                      {m.deleted ? (
+                        <div className="text-sm italic opacity-70">Ye message delete kar diya gaya</div>
+                      ) : m.type === 'image' ? (
+                        <img src={m.imageData} alt="photo" className="rounded-lg max-w-[220px] max-h-72 object-cover" />
+                      ) : m.type === 'audio' ? (
+                        <audio controls src={m.audioData} className="max-w-[220px]" />
+                      ) : (
+                        <div className="text-sm leading-relaxed break-words">{m.text}</div>
+                      )}
                       <div className={`text-[10px] mt-1 tracking-wide ${mine ? 'text-[#0F1B2D]/60' : 'text-[#8A97AC]'}`}>
                         {formatTime(m.createdAt)}
                       </div>
                     </div>
                     {selectedMsgId === m.id && (
                       <div className="flex gap-3 mt-1 text-[11px]">
+                        <button onClick={() => startReply(m)} className="text-[#E0A458] underline">
+                          Reply
+                        </button>
                         <button onClick={() => hideForMe(m.id)} className="text-[#8A97AC] underline">
                           Delete for me
                         </button>
@@ -646,7 +890,39 @@ export default function App() {
               })}
             </div>
 
-            <div className="p-4 border-t border-[#2A3B54] flex items-center gap-3">
+            {replyTo && (
+              <div className="px-4 pt-2 pb-1 flex items-center gap-2 border-t border-[#2A3B54] bg-[#16233A]">
+                <div className="flex-1 border-l-2 border-[#E0A458] pl-2 py-0.5 min-w-0">
+                  <div className="text-[#E0A458] text-xs font-medium">{replyTo.fromName}</div>
+                  <div className="text-[#8A97AC] text-xs truncate">{replyTo.preview}</div>
+                </div>
+                <button onClick={() => setReplyTo(null)} className="text-[#8A97AC] shrink-0">
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+            <div className={`p-4 flex items-center gap-2 ${replyTo ? '' : 'border-t border-[#2A3B54]'}`}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImagePick}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="text-[#8A97AC] hover:text-[#E0A458] transition-colors shrink-0"
+                title="Photo bhejein"
+              >
+                <Paperclip size={19} />
+              </button>
+              <button
+                onClick={recording ? stopRecording : startRecording}
+                className={`shrink-0 transition-colors ${recording ? 'text-[#E0785A]' : 'text-[#8A97AC] hover:text-[#E0A458]'}`}
+                title={recording ? 'Recording rokein aur bhejein' : 'Voice message'}
+              >
+                {recording ? <Square size={18} /> : <Mic size={19} />}
+              </button>
               <input
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
@@ -707,15 +983,30 @@ export default function App() {
                       mine ? 'bg-[#E0A458] text-[#0F1B2D] rounded-br-sm' : 'bg-[#2A3B54] text-[#F5F1E8] rounded-bl-sm'
                     }`}
                   >
-                    <div className={`text-sm break-words ${m.deleted ? 'italic opacity-70' : ''}`}>
-                      {m.deleted ? 'Ye message delete kar diya gaya' : m.text}
-                    </div>
+                    {m.replyTo && !m.deleted && (
+                      <div className={`mb-1.5 pl-2 border-l-2 text-xs opacity-80 ${mine ? 'border-[#0F1B2D]/50' : 'border-[#E0A458]'}`}>
+                        <div className="font-medium">{m.replyTo.fromName}</div>
+                        <div className="truncate max-w-[200px]">{m.replyTo.preview}</div>
+                      </div>
+                    )}
+                    {m.deleted ? (
+                      <div className="text-sm italic opacity-70">Ye message delete kar diya gaya</div>
+                    ) : m.type === 'image' ? (
+                      <img src={m.imageData} alt="photo" className="rounded-lg max-w-[200px] max-h-64 object-cover" />
+                    ) : m.type === 'audio' ? (
+                      <audio controls src={m.audioData} className="max-w-[200px]" />
+                    ) : (
+                      <div className="text-sm break-words">{m.text}</div>
+                    )}
                     <div className={`text-[10px] mt-1 ${mine ? 'text-[#0F1B2D]/60' : 'text-[#8A97AC]'}`}>
                       {formatTime(m.createdAt)}
                     </div>
                   </div>
                   {selectedMsgId === m.id && (
                     <div className="flex gap-3 mt-1 text-[11px]">
+                      <button onClick={() => startReply(m)} className="text-[#E0A458] underline">
+                        Reply
+                      </button>
                       <button onClick={() => hideForMe(m.id)} className="text-[#8A97AC] underline">
                         Delete for me
                       </button>
@@ -730,7 +1021,30 @@ export default function App() {
               );
             })}
           </div>
-          <div className="p-3 border-t border-[#2A3B54] flex items-center gap-2">
+          {replyTo && (
+            <div className="px-3 pt-2 pb-1 flex items-center gap-2 border-t border-[#2A3B54] bg-[#16233A]">
+              <div className="flex-1 border-l-2 border-[#E0A458] pl-2 py-0.5 min-w-0">
+                <div className="text-[#E0A458] text-xs font-medium">{replyTo.fromName}</div>
+                <div className="text-[#8A97AC] text-xs truncate">{replyTo.preview}</div>
+              </div>
+              <button onClick={() => setReplyTo(null)} className="text-[#8A97AC] shrink-0">
+                <X size={16} />
+              </button>
+            </div>
+          )}
+          <div className={`p-3 flex items-center gap-2 ${replyTo ? '' : 'border-t border-[#2A3B54]'}`}>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="text-[#8A97AC] shrink-0"
+            >
+              <Paperclip size={18} />
+            </button>
+            <button
+              onClick={recording ? stopRecording : startRecording}
+              className={`shrink-0 ${recording ? 'text-[#E0785A]' : 'text-[#8A97AC]'}`}
+            >
+              {recording ? <Square size={17} /> : <Mic size={18} />}
+            </button>
             <input
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
@@ -780,16 +1094,20 @@ export default function App() {
       {callStatus !== 'idle' && (
         <div className="fixed inset-0 bg-[#0F1B2D] flex flex-col items-center justify-center z-50">
           {callIsVideo ? (
-            <div className="relative w-full h-full">
+            <div className="relative w-full h-full" ref={pipContainerRef}>
               <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover bg-[#16233A]" />
-              <video
-                ref={localVideoRef}
-                autoPlay
-                playsInline
-                muted
-                className="absolute bottom-24 right-4 w-28 h-40 object-cover rounded-lg border border-[#2A3B54]"
-              />
-              <div className="absolute top-6 left-0 right-0 text-center">
+              <div
+                ref={pipElRef}
+                onMouseDown={onPipMouseDown}
+                onTouchStart={onPipTouchStart}
+                style={{ position: 'absolute', left: 0, top: 0, touchAction: 'none' }}
+                className={`rounded-lg border border-[#2A3B54] overflow-hidden cursor-grab active:cursor-grabbing select-none ${
+                  pipLarge ? 'w-44 h-64' : 'w-28 h-40'
+                }`}
+              >
+                <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover pointer-events-none" />
+              </div>
+              <div className="absolute top-6 left-0 right-0 text-center pointer-events-none">
                 <div className="text-[#F5F1E8] font-medium">{callPeerName}</div>
                 <div className="text-[#8A97AC] text-xs">{callStatus === 'calling' ? 'Calling…' : 'In call'}</div>
               </div>
