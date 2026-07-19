@@ -23,7 +23,7 @@ import {
 import { auth, db, usernameToEmail } from './firebase.js';
 import {
   Send, LogOut, MessageCircle, UserPlus, LogIn, Phone, Video, PhoneOff, Mic, MicOff,
-  Paperclip, Square, X, Users, Check, CheckCheck,
+  Paperclip, Square, X, Users, Check, CheckCheck, Image as ImageIcon, Trash2,
 } from 'lucide-react';
 
 const rtcConfig = {
@@ -64,6 +64,8 @@ export default function App() {
   const [newGroupMembers, setNewGroupMembers] = useState(new Set());
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
+  const wallpaperInputRef = useRef(null);
+  const [wallpaper, setWallpaper] = useState(null);
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
   const typingTimeoutRef = useRef(null);
@@ -159,6 +161,70 @@ export default function App() {
       setHiddenIds(new Set());
     }
   }, [currentUid]);
+
+  // ---- chat wallpaper (stored locally on this device only) ----
+  useEffect(() => {
+    if (!currentUid) {
+      setWallpaper(null);
+      return;
+    }
+    try {
+      setWallpaper(localStorage.getItem(`correspond_wallpaper_${currentUid}`));
+    } catch {
+      setWallpaper(null);
+    }
+  }, [currentUid]);
+
+  const compressWallpaper = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new window.Image();
+        img.onload = () => {
+          const maxDim = 1280;
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round(height * (maxDim / width));
+              width = maxDim;
+            } else {
+              width = Math.round(width * (maxDim / height));
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.7));
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  const handleWallpaperPick = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !currentUid) return;
+    try {
+      const dataUrl = await compressWallpaper(file);
+      localStorage.setItem(`correspond_wallpaper_${currentUid}`, dataUrl);
+      setWallpaper(dataUrl);
+    } catch (err) {
+      alert('Wallpaper set karne mein dikkat hui: ' + err.message);
+    }
+  };
+
+  const removeWallpaper = () => {
+    try {
+      localStorage.removeItem(`correspond_wallpaper_${currentUid}`);
+    } catch {}
+    setWallpaper(null);
+  };
 
   const chatList = useMemo(() => {
     const dmItems = users.map((u) => {
@@ -1042,6 +1108,15 @@ export default function App() {
             <span className="text-[#E9EDEF] text-lg" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>Correspond</span>
           </div>
           <div className="flex items-center gap-4">
+            <input ref={wallpaperInputRef} type="file" accept="image/*" onChange={handleWallpaperPick} className="hidden" />
+            <button onClick={() => wallpaperInputRef.current?.click()} title="Chat wallpaper" className="text-[#8696A0] hover:text-[#00A884] transition-colors">
+              <ImageIcon size={19} />
+            </button>
+            {wallpaper && (
+              <button onClick={removeWallpaper} title="Wallpaper hataayen" className="text-[#8696A0] hover:text-[#F15C6D] transition-colors">
+                <Trash2 size={18} />
+              </button>
+            )}
             <button onClick={() => setShowNewGroup(true)} title="New group" className="text-[#8696A0] hover:text-[#00A884] transition-colors">
               <Users size={19} />
             </button>
@@ -1129,7 +1204,11 @@ export default function App() {
               )}
             </div>
 
-            <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-5 space-y-3 bg-[#0B141A]">
+            <div
+              ref={scrollRef}
+              className="flex-1 overflow-y-auto px-6 py-5 space-y-3 bg-[#0B141A]"
+              style={wallpaper ? { backgroundImage: `linear-gradient(rgba(11,20,26,0.78), rgba(11,20,26,0.78)), url(${wallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+            >
               {visibleMessages.length === 0 && (
                 <p className="text-[#8696A0] text-sm text-center mt-10">Abhi koi message nahi. Sabse pehla message aap hi bhejein.</p>
               )}
@@ -1188,7 +1267,11 @@ export default function App() {
               </div>
             )}
           </div>
-          <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-4 space-y-3">
+          <div
+            ref={scrollRef}
+            className="flex-1 overflow-y-auto px-3 py-4 space-y-3"
+            style={wallpaper ? { backgroundImage: `linear-gradient(rgba(11,20,26,0.78), rgba(11,20,26,0.78)), url(${wallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+          >
             {visibleMessages.map((m) => <MessageBubble key={m.id} m={m} />)}
           </div>
           {replyTo && (
