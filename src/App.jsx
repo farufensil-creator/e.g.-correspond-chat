@@ -33,7 +33,7 @@ const rtcConfig = {
   ],
 };
 
-const REACTION_EMOJIS = ['ha', 'ny', '❤️', '🤣', '😭', '🥺'];
+const REACTION_EMOJIS = ['🤗', 'n🥰', '❤️', '🤣', '😭', '🥺'];
 
 function convoId(a, b) {
   return [a, b].sort().join('__');
