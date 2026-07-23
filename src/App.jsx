@@ -33,7 +33,7 @@ const rtcConfig = {
   ],
 };
 
-const REACTION_EMOJIS = ['🤗', 'n🥰', '❤️', '🤣', '😭', '🥺'];
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
 function convoId(a, b) {
   return [a, b].sort().join('__');
@@ -922,8 +922,8 @@ export default function App() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0B141A]">
-        <div className="text-[#8696A0] italic tracking-wide">connecting…</div>
+      <div className="min-h-screen flex items-center justify-center bg-[#0A0110]">
+        <div className="text-[#C98BB0] italic tracking-wide">connecting…</div>
       </div>
     );
   }
@@ -931,48 +931,62 @@ export default function App() {
   if (screen === 'login' || screen === 'signup') {
     const isLogin = screen === 'login';
     return (
-      <div className="min-h-screen bg-[#0B141A] flex items-center justify-center p-6">
-        <div className="w-full max-w-sm">
+      <div className="min-h-screen bg-[#0A0110] flex items-center justify-center p-6 relative overflow-hidden">
+        <style>{`
+          @keyframes roseFloat { 0%,100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-18px) rotate(8deg); } }
+          @keyframes neonPulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
+          .rose-float { animation: roseFloat 6s ease-in-out infinite; }
+          .neon-glow { text-shadow: 0 0 6px #FF2E9A, 0 0 16px #FF2E9A, 0 0 32px rgba(255,46,154,0.5); }
+          .neon-border-glow { box-shadow: 0 0 12px rgba(255,46,154,0.55), 0 0 28px rgba(255,46,154,0.25); }
+        `}</style>
+        <span className="absolute top-8 left-6 text-3xl rose-float select-none" style={{ animationDelay: '0s' }}>🌹</span>
+        <span className="absolute top-24 right-10 text-2xl rose-float select-none" style={{ animationDelay: '1.2s' }}>🌹</span>
+        <span className="absolute bottom-16 left-14 text-2xl rose-float select-none" style={{ animationDelay: '2s' }}>🌹</span>
+        <span className="absolute bottom-10 right-8 text-3xl rose-float select-none" style={{ animationDelay: '0.6s' }}>🌹</span>
+        <span className="absolute top-1/2 left-4 text-xl rose-float select-none" style={{ animationDelay: '1.8s' }}>🌹</span>
+        <span className="absolute top-1/3 right-4 text-xl rose-float select-none" style={{ animationDelay: '2.6s' }}>🌹</span>
+
+        <div className="w-full max-w-sm relative z-10">
           <div className="flex items-center gap-2 justify-center mb-8">
-            <MessageCircle className="text-[#00A884]" size={28} strokeWidth={1.75} />
-            <h1 className="text-3xl text-[#E9EDEF] tracking-tight" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>
-              Correspond
+            <MessageCircle className="text-[#FF2E9A] neon-pulse" size={28} strokeWidth={1.75} style={{ filter: 'drop-shadow(0 0 8px #FF2E9A)' }} />
+            <h1 className="text-3xl text-[#FFE8F5] tracking-tight neon-glow" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>
+              Correspond 🌹
             </h1>
           </div>
 
-          <div className="bg-[#202C33] rounded-lg border border-[#2A3942] p-7 shadow-xl">
-            <h2 className="text-[#E9EDEF] text-sm uppercase tracking-[0.15em] mb-6 font-medium">
+          <div className="bg-[#1A0B24] rounded-lg border border-[#FF2E9A]/40 p-7 shadow-xl neon-border-glow">
+            <h2 className="text-[#FFE8F5] text-sm uppercase tracking-[0.15em] mb-6 font-medium">
               {isLogin ? 'Sign in' : 'Create account'}
             </h2>
 
             <form onSubmit={isLogin ? handleLogin : handleSignup} className="space-y-4">
               <div>
-                <label className="block text-[11px] uppercase tracking-wider text-[#8696A0] mb-1.5">Username</label>
+                <label className="block text-[11px] uppercase tracking-wider text-[#C98BB0] mb-1.5">Username</label>
                 <input
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full bg-[#0B141A] border border-[#2A3942] rounded-md px-3 py-2.5 text-[#E9EDEF] outline-none focus:border-[#00A884] transition-colors"
+                  className="w-full bg-[#0A0110] border border-[#5C1F49] rounded-md px-3 py-2.5 text-[#FFE8F5] outline-none focus:border-[#FF2E9A] transition-colors"
                   placeholder="e.g. aarav"
                   autoComplete="off"
                 />
               </div>
               <div>
-                <label className="block text-[11px] uppercase tracking-wider text-[#8696A0] mb-1.5">Password</label>
+                <label className="block text-[11px] uppercase tracking-wider text-[#C98BB0] mb-1.5">Password</label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-[#0B141A] border border-[#2A3942] rounded-md px-3 py-2.5 text-[#E9EDEF] outline-none focus:border-[#00A884] transition-colors"
+                  className="w-full bg-[#0A0110] border border-[#5C1F49] rounded-md px-3 py-2.5 text-[#FFE8F5] outline-none focus:border-[#FF2E9A] transition-colors"
                   placeholder="kam se kam 6 characters"
                 />
               </div>
 
-              {error && <p className="text-[#F15C6D] text-sm">{error}</p>}
+              {error && <p className="text-[#FF3D68] text-sm">{error}</p>}
 
               <button
                 type="submit"
                 disabled={busy}
-                className="w-full bg-[#00A884] hover:bg-[#02c398] disabled:opacity-50 text-[#0B141A] font-semibold rounded-md py-2.5 flex items-center justify-center gap-2 transition-colors"
+                className="w-full bg-[#FF2E9A] hover:bg-[#FF5FC4] disabled:opacity-50 text-[#0A0110] font-semibold rounded-md py-2.5 flex items-center justify-center gap-2 transition-colors neon-border-glow"
               >
                 {isLogin ? <LogIn size={17} /> : <UserPlus size={17} />}
                 {busy ? 'Ek second…' : isLogin ? 'Sign in' : 'Create account'}
@@ -984,7 +998,7 @@ export default function App() {
                 setScreen(isLogin ? 'signup' : 'login');
                 setError('');
               }}
-              className="w-full text-center text-[#8696A0] text-sm mt-5 hover:text-[#E9EDEF] transition-colors"
+              className="w-full text-center text-[#C98BB0] text-sm mt-5 hover:text-[#FFE8F5] transition-colors"
             >
               {isLogin ? 'Naya account banayen' : 'Pehle se account hai? Sign in karein'}
             </button>
@@ -1001,7 +1015,7 @@ export default function App() {
     if (m.type === 'call') {
       return (
         <div className="flex justify-center">
-          <div className="flex items-center gap-2 bg-[#202C33] border border-[#2A3942] rounded-full px-4 py-1.5 text-[#8696A0] text-xs">
+          <div className="flex items-center gap-2 bg-[#1A0B24] border border-[#5C1F49] rounded-full px-4 py-1.5 text-[#C98BB0] text-xs">
             {m.video ? <Video size={13} /> : <Phone size={13} />}
             {callLabel(m)}
             <span className="opacity-60">· {formatTime(m.createdAt)}</span>
@@ -1020,14 +1034,14 @@ export default function App() {
         <div
           onClick={() => setSelectedMsgId(selectedMsgId === m.id ? null : m.id)}
           className={`relative max-w-[75%] rounded-lg px-3 py-2 cursor-pointer ${
-            mine ? 'bg-[#005C4B] text-[#E9EDEF] rounded-tr-none' : 'bg-[#202C33] text-[#E9EDEF] rounded-tl-none'
+            mine ? 'bg-[#7A1B5C] text-[#FFE8F5] rounded-tr-none shadow-[0_0_10px_rgba(255,46,154,0.35)]' : 'bg-[#1A0B24] text-[#FFE8F5] rounded-tl-none'
           }`}
         >
           {activeChat.type === 'group' && !mine && (
-            <div className="text-[#00A884] text-xs font-medium mb-0.5">{m.fromName}</div>
+            <div className="text-[#FF2E9A] text-xs font-medium mb-0.5">{m.fromName}</div>
           )}
           {m.replyTo && !m.deleted && (
-            <div className="mb-1.5 pl-2 border-l-2 border-[#00A884] text-xs opacity-80 bg-black/10 rounded px-1.5 py-1">
+            <div className="mb-1.5 pl-2 border-l-2 border-[#FF2E9A] text-xs opacity-80 bg-black/10 rounded px-1.5 py-1">
               <div className="font-medium">{m.replyTo.fromName}</div>
               <div className="truncate max-w-[220px]">{m.replyTo.preview}</div>
             </div>
@@ -1041,15 +1055,15 @@ export default function App() {
           ) : (
             <div className="text-sm leading-relaxed break-words">{m.text}</div>
           )}
-          <div className={`flex items-center justify-end gap-1 text-[10px] mt-1 ${mine ? 'text-[#8FBFB2]' : 'text-[#8696A0]'}`}>
+          <div className={`flex items-center justify-end gap-1 text-[10px] mt-1 ${mine ? 'text-[#FFC9E8]' : 'text-[#C98BB0]'}`}>
             {formatTime(m.createdAt)}
-            {mine && activeChat.type === 'dm' && (m.status === 'read' ? <CheckCheck size={13} className="text-[#53BDEB]" /> : <Check size={13} />)}
+            {mine && activeChat.type === 'dm' && (m.status === 'read' ? <CheckCheck size={13} className="text-[#B15CFF]" /> : <Check size={13} />)}
           </div>
         </div>
         {Object.keys(reactionCounts).length > 0 && (
           <div className="flex gap-1 mt-1">
             {Object.entries(reactionCounts).map(([emo, count]) => (
-              <span key={emo} className="bg-[#202C33] border border-[#2A3942] rounded-full px-1.5 py-0.5 text-xs">
+              <span key={emo} className="bg-[#1A0B24] border border-[#5C1F49] rounded-full px-1.5 py-0.5 text-xs">
                 {emo} {count > 1 ? count : ''}
               </span>
             ))}
@@ -1065,10 +1079,10 @@ export default function App() {
               ))}
             </div>
             <div className="flex gap-3 text-[11px]">
-              <button onClick={() => startReply(m)} className="text-[#00A884] underline">Reply</button>
-              <button onClick={() => hideForMe(m.id)} className="text-[#8696A0] underline">Delete for me</button>
+              <button onClick={() => startReply(m)} className="text-[#FF2E9A] underline">Reply</button>
+              <button onClick={() => hideForMe(m.id)} className="text-[#C98BB0] underline">Delete for me</button>
               {mine && !m.deleted && (
-                <button onClick={() => deleteForEveryone(m.id)} className="text-[#F15C6D] underline">Delete for everyone</button>
+                <button onClick={() => deleteForEveryone(m.id)} className="text-[#FF3D68] underline">Delete for everyone</button>
               )}
             </div>
           </div>
@@ -1079,60 +1093,63 @@ export default function App() {
 
   const ChatHeader = () => (
     <>
-      <div className="w-9 h-9 rounded-full bg-[#2A3942] flex items-center justify-center text-[#E9EDEF] font-medium text-sm relative">
+      <div className="w-9 h-9 rounded-full bg-[#5C1F49] flex items-center justify-center text-[#FFE8F5] font-medium text-sm relative">
         {activeChat.type === 'group' ? <Users size={16} /> : activeChat.username.slice(0, 2).toUpperCase()}
         {activeChat.type === 'dm' && activeContactInfo?.online && (
-          <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#00A884] border-2 border-[#0B141A]" />
+          <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#FF2E9A] border-2 border-[#0A0110]" />
         )}
       </div>
       <div>
-        <div className="text-[#E9EDEF] font-medium">{activeChat.type === 'group' ? activeChat.name : activeChat.username}</div>
+        <div className="text-[#FFE8F5] font-medium">{activeChat.type === 'group' ? activeChat.name : activeChat.username}</div>
         {activeChat.type === 'dm' && (
-          <div className="text-[#8696A0] text-xs">
-            {isTyping ? <span className="text-[#00A884]">typing…</span> : activeContactInfo?.online ? 'online' : activeContactInfo?.lastSeen ? formatLastSeen(activeContactInfo.lastSeen) : ''}
+          <div className="text-[#C98BB0] text-xs">
+            {isTyping ? <span className="text-[#FF2E9A]">typing…</span> : activeContactInfo?.online ? 'online' : activeContactInfo?.lastSeen ? formatLastSeen(activeContactInfo.lastSeen) : ''}
           </div>
         )}
         {activeChat.type === 'group' && (
-          <div className="text-[#8696A0] text-xs">{(activeChat.members || []).length} members</div>
+          <div className="text-[#C98BB0] text-xs">{(activeChat.members || []).length} members</div>
         )}
       </div>
     </>
   );
 
   return (
-    <div className="min-h-screen bg-[#0B141A] flex">
-      <div className="w-full sm:w-80 border-r border-[#2A3942] flex flex-col">
-        <div className="p-4 border-b border-[#2A3942] flex items-center justify-between bg-[#202C33]">
+    <div className="min-h-screen bg-[#0A0110] flex">
+      <div className="w-full sm:w-80 border-r border-[#5C1F49] flex flex-col">
+        <style>{`
+          .neon-glow-sm { text-shadow: 0 0 5px #FF2E9A, 0 0 12px rgba(255,46,154,0.6); }
+        `}</style>
+        <div className="p-4 border-b border-[#5C1F49] flex items-center justify-between bg-[#1A0B24]">
           <div className="flex items-center gap-2">
-            <MessageCircle className="text-[#00A884]" size={22} strokeWidth={1.75} />
-            <span className="text-[#E9EDEF] text-lg" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>Correspond</span>
+            <MessageCircle className="text-[#FF2E9A]" size={22} strokeWidth={1.75} style={{ filter: 'drop-shadow(0 0 6px #FF2E9A)' }} />
+            <span className="text-[#FFE8F5] text-lg neon-glow-sm" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>Correspond 🌹</span>
           </div>
           <div className="flex items-center gap-4">
             <input ref={wallpaperInputRef} type="file" accept="image/*" onChange={handleWallpaperPick} className="hidden" />
-            <button onClick={() => wallpaperInputRef.current?.click()} title="Chat wallpaper" className="text-[#8696A0] hover:text-[#00A884] transition-colors">
+            <button onClick={() => wallpaperInputRef.current?.click()} title="Chat wallpaper" className="text-[#C98BB0] hover:text-[#FF2E9A] transition-colors">
               <ImageIcon size={19} />
             </button>
             {wallpaper && (
-              <button onClick={removeWallpaper} title="Wallpaper hataayen" className="text-[#8696A0] hover:text-[#F15C6D] transition-colors">
+              <button onClick={removeWallpaper} title="Wallpaper hataayen" className="text-[#C98BB0] hover:text-[#FF3D68] transition-colors">
                 <Trash2 size={18} />
               </button>
             )}
-            <button onClick={() => setShowNewGroup(true)} title="New group" className="text-[#8696A0] hover:text-[#00A884] transition-colors">
+            <button onClick={() => setShowNewGroup(true)} title="New group" className="text-[#C98BB0] hover:text-[#FF2E9A] transition-colors">
               <Users size={19} />
             </button>
-            <button onClick={handleLogout} title="Logout" className="text-[#8696A0] hover:text-[#F15C6D] transition-colors">
+            <button onClick={handleLogout} title="Logout" className="text-[#C98BB0] hover:text-[#FF3D68] transition-colors">
               <LogOut size={19} />
             </button>
           </div>
         </div>
 
-        <div className="px-4 py-2 text-[#8696A0] text-xs uppercase tracking-wider bg-[#111B21]">
-          Signed in as <span className="text-[#E9EDEF]">{currentUsername}</span>
+        <div className="px-4 py-2 text-[#C98BB0] text-xs uppercase tracking-wider bg-[#06010A]">
+          Signed in as <span className="text-[#FFE8F5]">{currentUsername}</span>
         </div>
 
         <div className="flex-1 overflow-y-auto">
           {chatList.length === 0 && (
-            <div className="p-5 text-[#8696A0] text-sm leading-relaxed">
+            <div className="p-5 text-[#C98BB0] text-sm leading-relaxed">
               Abhi koi chat nahi. Kisi aur ko is website ka link bhejein — sign up karte hi wo yahan aa jayega.
             </div>
           )}
@@ -1148,27 +1165,27 @@ export default function App() {
                       : { type: 'group', id: c.id, name: c.name, members: groups.find((g) => g.id === c.id)?.members || [] }
                   )
                 }
-                className={`w-full text-left px-4 py-3 flex items-center gap-3 border-b border-[#202C33] transition-colors ${
-                  isActive ? 'bg-[#2A3942]' : 'hover:bg-[#182229]'
+                className={`w-full text-left px-4 py-3 flex items-center gap-3 border-b border-[#1A0B24] transition-colors ${
+                  isActive ? 'bg-[#5C1F49]' : 'hover:bg-[#2A0F22]'
                 }`}
               >
-                <div className="w-11 h-11 rounded-full bg-[#2A3942] flex items-center justify-center text-[#E9EDEF] font-medium text-sm shrink-0 relative">
+                <div className="w-11 h-11 rounded-full bg-[#5C1F49] flex items-center justify-center text-[#FFE8F5] font-medium text-sm shrink-0 relative">
                   {c.type === 'group' ? <Users size={18} /> : c.username.slice(0, 2).toUpperCase()}
                   {c.type === 'dm' && c.online && (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#00A884] border-2 border-[#111B21]" />
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#FF2E9A] border-2 border-[#06010A]" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="text-[#E9EDEF] text-sm font-medium truncate">{c.type === 'dm' ? c.username : c.name}</div>
-                    {c.lastMessageAt && <div className="text-[10px] text-[#8696A0] shrink-0">{formatListTime(c.lastMessageAt)}</div>}
+                    <div className="text-[#FFE8F5] text-sm font-medium truncate">{c.type === 'dm' ? c.username : c.name}</div>
+                    {c.lastMessageAt && <div className="text-[10px] text-[#C98BB0] shrink-0">{formatListTime(c.lastMessageAt)}</div>}
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <div className="text-[#8696A0] text-xs truncate">
-                      {c.type === 'dm' && c.typing ? <span className="text-[#00A884]">typing…</span> : c.lastMessage || 'Naya contact'}
+                    <div className="text-[#C98BB0] text-xs truncate">
+                      {c.type === 'dm' && c.typing ? <span className="text-[#FF2E9A]">typing…</span> : c.lastMessage || 'Naya contact'}
                     </div>
                     {c.unread > 0 && (
-                      <span className="bg-[#00A884] text-[#0B141A] text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shrink-0">
+                      <span className="bg-[#FF2E9A] text-[#0A0110] text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shrink-0">
                         {c.unread}
                       </span>
                     )}
@@ -1182,22 +1199,22 @@ export default function App() {
 
       <div className="hidden sm:flex flex-1 flex-col">
         {!activeChat ? (
-          <div className="flex-1 flex items-center justify-center text-[#8696A0]">
+          <div className="flex-1 flex items-center justify-center text-[#C98BB0]">
             <div className="text-center max-w-xs">
-              <MessageCircle size={32} className="mx-auto mb-3 text-[#2A3942]" strokeWidth={1.5} />
+              <MessageCircle size={32} className="mx-auto mb-3 text-[#5C1F49]" strokeWidth={1.5} />
               <p className="text-sm">Baat karne ke liye ek chat chunein</p>
             </div>
           </div>
         ) : (
           <>
-            <div className="px-6 py-3 border-b border-[#2A3942] flex items-center gap-3 bg-[#202C33]">
+            <div className="px-6 py-3 border-b border-[#5C1F49] flex items-center gap-3 bg-[#1A0B24]">
               <ChatHeader />
               {activeChat.type === 'dm' && callStatus === 'idle' && (
                 <div className="flex items-center gap-4 ml-auto">
-                  <button onClick={() => startCall(false)} title="Audio call" className="text-[#8696A0] hover:text-[#00A884] transition-colors">
+                  <button onClick={() => startCall(false)} title="Audio call" className="text-[#C98BB0] hover:text-[#FF2E9A] transition-colors">
                     <Phone size={18} />
                   </button>
-                  <button onClick={() => startCall(true)} title="Video call" className="text-[#8696A0] hover:text-[#00A884] transition-colors">
+                  <button onClick={() => startCall(true)} title="Video call" className="text-[#C98BB0] hover:text-[#FF2E9A] transition-colors">
                     <Video size={19} />
                   </button>
                 </div>
@@ -1206,32 +1223,32 @@ export default function App() {
 
             <div
               ref={scrollRef}
-              className="flex-1 overflow-y-auto px-6 py-5 space-y-3 bg-[#0B141A]"
+              className="flex-1 overflow-y-auto px-6 py-5 space-y-3 bg-[#0A0110]"
               style={wallpaper ? { backgroundImage: `linear-gradient(rgba(11,20,26,0.78), rgba(11,20,26,0.78)), url(${wallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
             >
               {visibleMessages.length === 0 && (
-                <p className="text-[#8696A0] text-sm text-center mt-10">Abhi koi message nahi. Sabse pehla message aap hi bhejein.</p>
+                <p className="text-[#C98BB0] text-sm text-center mt-10">Abhi koi message nahi. Sabse pehla message aap hi bhejein.</p>
               )}
               {visibleMessages.map((m) => <MessageBubble key={m.id} m={m} />)}
             </div>
 
             {replyTo && (
-              <div className="px-6 pt-2 pb-1 flex items-center gap-2 border-t border-[#2A3942] bg-[#202C33]">
-                <div className="flex-1 border-l-2 border-[#00A884] pl-2 py-0.5 min-w-0">
-                  <div className="text-[#00A884] text-xs font-medium">{replyTo.fromName}</div>
-                  <div className="text-[#8696A0] text-xs truncate">{replyTo.preview}</div>
+              <div className="px-6 pt-2 pb-1 flex items-center gap-2 border-t border-[#5C1F49] bg-[#1A0B24]">
+                <div className="flex-1 border-l-2 border-[#FF2E9A] pl-2 py-0.5 min-w-0">
+                  <div className="text-[#FF2E9A] text-xs font-medium">{replyTo.fromName}</div>
+                  <div className="text-[#C98BB0] text-xs truncate">{replyTo.preview}</div>
                 </div>
-                <button onClick={() => setReplyTo(null)} className="text-[#8696A0] shrink-0"><X size={16} /></button>
+                <button onClick={() => setReplyTo(null)} className="text-[#C98BB0] shrink-0"><X size={16} /></button>
               </div>
             )}
-            <div className={`p-4 flex items-center gap-2 bg-[#202C33] ${replyTo ? '' : 'border-t border-[#2A3942]'}`}>
+            <div className={`p-4 flex items-center gap-2 bg-[#1A0B24] ${replyTo ? '' : 'border-t border-[#5C1F49]'}`}>
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImagePick} className="hidden" />
-              <button onClick={() => fileInputRef.current?.click()} className="text-[#8696A0] hover:text-[#00A884] transition-colors shrink-0" title="Photo bhejein">
+              <button onClick={() => fileInputRef.current?.click()} className="text-[#C98BB0] hover:text-[#FF2E9A] transition-colors shrink-0" title="Photo bhejein">
                 <Paperclip size={19} />
               </button>
               <button
                 onClick={recording ? stopRecording : startRecording}
-                className={`shrink-0 transition-colors ${recording ? 'text-[#F15C6D]' : 'text-[#8696A0] hover:text-[#00A884]'}`}
+                className={`shrink-0 transition-colors ${recording ? 'text-[#FF3D68]' : 'text-[#C98BB0] hover:text-[#FF2E9A]'}`}
                 title={recording ? 'Recording rokein aur bhejein' : 'Voice message'}
               >
                 {recording ? <Square size={18} /> : <Mic size={19} />}
@@ -1241,12 +1258,12 @@ export default function App() {
                 onChange={(e) => handleDraftChange(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
                 placeholder="Message likhein…"
-                className="flex-1 bg-[#2A3942] border border-[#3B4A54] rounded-full px-4 py-2.5 text-[#E9EDEF] outline-none focus:border-[#00A884] transition-colors text-sm"
+                className="flex-1 bg-[#5C1F49] border border-[#6B2350] rounded-full px-4 py-2.5 text-[#FFE8F5] outline-none focus:border-[#FF2E9A] transition-colors text-sm"
               />
               <button
                 onClick={sendMessage}
                 disabled={!draft.trim()}
-                className="bg-[#00A884] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#02c398] text-[#0B141A] rounded-full w-10 h-10 flex items-center justify-center transition-colors shrink-0"
+                className="bg-[#FF2E9A] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#FF5FC4] text-[#0A0110] rounded-full w-10 h-10 flex items-center justify-center transition-colors shrink-0"
               >
                 <Send size={16} />
               </button>
@@ -1256,14 +1273,14 @@ export default function App() {
       </div>
 
       {activeChat && (
-        <div className="sm:hidden fixed inset-0 bg-[#0B141A] flex flex-col z-10">
-          <div className="px-3 py-3 border-b border-[#2A3942] flex items-center gap-3 bg-[#202C33]">
-            <button onClick={() => setActiveChat(null)} className="text-[#8696A0]">←</button>
+        <div className="sm:hidden fixed inset-0 bg-[#0A0110] flex flex-col z-10">
+          <div className="px-3 py-3 border-b border-[#5C1F49] flex items-center gap-3 bg-[#1A0B24]">
+            <button onClick={() => setActiveChat(null)} className="text-[#C98BB0]">←</button>
             <ChatHeader />
             {activeChat.type === 'dm' && callStatus === 'idle' && (
               <div className="flex items-center gap-4 ml-auto mr-1">
-                <button onClick={() => startCall(false)} className="text-[#8696A0]"><Phone size={19} /></button>
-                <button onClick={() => startCall(true)} className="text-[#8696A0]"><Video size={20} /></button>
+                <button onClick={() => startCall(false)} className="text-[#C98BB0]"><Phone size={19} /></button>
+                <button onClick={() => startCall(true)} className="text-[#C98BB0]"><Video size={20} /></button>
               </div>
             )}
           </div>
@@ -1275,17 +1292,17 @@ export default function App() {
             {visibleMessages.map((m) => <MessageBubble key={m.id} m={m} />)}
           </div>
           {replyTo && (
-            <div className="px-3 pt-2 pb-1 flex items-center gap-2 border-t border-[#2A3942] bg-[#202C33]">
-              <div className="flex-1 border-l-2 border-[#00A884] pl-2 py-0.5 min-w-0">
-                <div className="text-[#00A884] text-xs font-medium">{replyTo.fromName}</div>
-                <div className="text-[#8696A0] text-xs truncate">{replyTo.preview}</div>
+            <div className="px-3 pt-2 pb-1 flex items-center gap-2 border-t border-[#5C1F49] bg-[#1A0B24]">
+              <div className="flex-1 border-l-2 border-[#FF2E9A] pl-2 py-0.5 min-w-0">
+                <div className="text-[#FF2E9A] text-xs font-medium">{replyTo.fromName}</div>
+                <div className="text-[#C98BB0] text-xs truncate">{replyTo.preview}</div>
               </div>
-              <button onClick={() => setReplyTo(null)} className="text-[#8696A0] shrink-0"><X size={16} /></button>
+              <button onClick={() => setReplyTo(null)} className="text-[#C98BB0] shrink-0"><X size={16} /></button>
             </div>
           )}
-          <div className={`p-3 flex items-center gap-2 bg-[#202C33] ${replyTo ? '' : 'border-t border-[#2A3942]'}`}>
-            <button onClick={() => fileInputRef.current?.click()} className="text-[#8696A0] shrink-0"><Paperclip size={18} /></button>
-            <button onClick={recording ? stopRecording : startRecording} className={`shrink-0 ${recording ? 'text-[#F15C6D]' : 'text-[#8696A0]'}`}>
+          <div className={`p-3 flex items-center gap-2 bg-[#1A0B24] ${replyTo ? '' : 'border-t border-[#5C1F49]'}`}>
+            <button onClick={() => fileInputRef.current?.click()} className="text-[#C98BB0] shrink-0"><Paperclip size={18} /></button>
+            <button onClick={recording ? stopRecording : startRecording} className={`shrink-0 ${recording ? 'text-[#FF3D68]' : 'text-[#C98BB0]'}`}>
               {recording ? <Square size={17} /> : <Mic size={18} />}
             </button>
             <input
@@ -1293,9 +1310,9 @@ export default function App() {
               onChange={(e) => handleDraftChange(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
               placeholder="Message likhein…"
-              className="flex-1 bg-[#2A3942] border border-[#3B4A54] rounded-full px-4 py-2 text-[#E9EDEF] outline-none text-sm"
+              className="flex-1 bg-[#5C1F49] border border-[#6B2350] rounded-full px-4 py-2 text-[#FFE8F5] outline-none text-sm"
             />
-            <button onClick={sendMessage} disabled={!draft.trim()} className="bg-[#00A884] disabled:opacity-40 text-[#0B141A] rounded-full w-9 h-9 flex items-center justify-center shrink-0">
+            <button onClick={sendMessage} disabled={!draft.trim()} className="bg-[#FF2E9A] disabled:opacity-40 text-[#0A0110] rounded-full w-9 h-9 flex items-center justify-center shrink-0">
               <Send size={15} />
             </button>
           </div>
@@ -1304,21 +1321,21 @@ export default function App() {
 
       {showNewGroup && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-6">
-          <div className="bg-[#202C33] rounded-lg border border-[#2A3942] w-full max-w-sm p-5 max-h-[80vh] flex flex-col">
+          <div className="bg-[#1A0B24] rounded-lg border border-[#5C1F49] w-full max-w-sm p-5 max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-[#E9EDEF] font-medium">Naya group</h3>
-              <button onClick={() => setShowNewGroup(false)} className="text-[#8696A0]"><X size={18} /></button>
+              <h3 className="text-[#FFE8F5] font-medium">Naya group</h3>
+              <button onClick={() => setShowNewGroup(false)} className="text-[#C98BB0]"><X size={18} /></button>
             </div>
             <input
               value={newGroupName}
               onChange={(e) => setNewGroupName(e.target.value)}
               placeholder="Group ka naam"
-              className="w-full bg-[#0B141A] border border-[#2A3942] rounded-md px-3 py-2.5 text-[#E9EDEF] outline-none focus:border-[#00A884] mb-4 text-sm"
+              className="w-full bg-[#0A0110] border border-[#5C1F49] rounded-md px-3 py-2.5 text-[#FFE8F5] outline-none focus:border-[#FF2E9A] mb-4 text-sm"
             />
-            <div className="text-[#8696A0] text-xs uppercase tracking-wider mb-2">Members chunein</div>
+            <div className="text-[#C98BB0] text-xs uppercase tracking-wider mb-2">Members chunein</div>
             <div className="flex-1 overflow-y-auto space-y-1 mb-4">
               {users.map((u) => (
-                <label key={u.uid} className="flex items-center gap-3 px-2 py-2 rounded hover:bg-[#2A3942] cursor-pointer">
+                <label key={u.uid} className="flex items-center gap-3 px-2 py-2 rounded hover:bg-[#5C1F49] cursor-pointer">
                   <input
                     type="checkbox"
                     checked={newGroupMembers.has(u.uid)}
@@ -1330,14 +1347,14 @@ export default function App() {
                         return next;
                       });
                     }}
-                    className="accent-[#00A884]"
+                    className="accent-[#FF2E9A]"
                   />
-                  <span className="text-[#E9EDEF] text-sm">{u.username}</span>
+                  <span className="text-[#FFE8F5] text-sm">{u.username}</span>
                 </label>
               ))}
-              {users.length === 0 && <div className="text-[#8696A0] text-sm">Koi contact nahi mila.</div>}
+              {users.length === 0 && <div className="text-[#C98BB0] text-sm">Koi contact nahi mila.</div>}
             </div>
-            <button onClick={createGroup} className="w-full bg-[#00A884] hover:bg-[#02c398] text-[#0B141A] font-semibold rounded-md py-2.5">
+            <button onClick={createGroup} className="w-full bg-[#FF2E9A] hover:bg-[#FF5FC4] text-[#0A0110] font-semibold rounded-md py-2.5">
               Group banayen
             </button>
           </div>
@@ -1345,54 +1362,54 @@ export default function App() {
       )}
 
       {incomingCall && (
-        <div className="fixed inset-0 bg-[#0B141A]/97 flex flex-col items-center justify-center z-50 p-6">
-          <div className="w-20 h-20 rounded-full bg-[#2A3942] flex items-center justify-center text-[#E9EDEF] text-2xl font-medium mb-5">
+        <div className="fixed inset-0 bg-[#0A0110]/97 flex flex-col items-center justify-center z-50 p-6">
+          <div className="w-20 h-20 rounded-full bg-[#5C1F49] flex items-center justify-center text-[#FFE8F5] text-2xl font-medium mb-5">
             {incomingCall.fromName.slice(0, 2).toUpperCase()}
           </div>
-          <div className="text-[#E9EDEF] text-lg font-medium mb-1">{incomingCall.fromName}</div>
-          <div className="text-[#8696A0] text-sm mb-10">{incomingCall.video ? 'Video call...' : 'Audio call...'}</div>
+          <div className="text-[#FFE8F5] text-lg font-medium mb-1">{incomingCall.fromName}</div>
+          <div className="text-[#C98BB0] text-sm mb-10">{incomingCall.video ? 'Video call...' : 'Audio call...'}</div>
           <div className="flex items-center gap-8">
-            <button onClick={rejectCall} className="w-14 h-14 rounded-full bg-[#F15C6D] flex items-center justify-center text-[#0B141A]"><PhoneOff size={22} /></button>
-            <button onClick={acceptCall} className="w-14 h-14 rounded-full bg-[#00A884] flex items-center justify-center text-[#0B141A]"><Phone size={22} /></button>
+            <button onClick={rejectCall} className="w-14 h-14 rounded-full bg-[#FF3D68] flex items-center justify-center text-[#0A0110]"><PhoneOff size={22} /></button>
+            <button onClick={acceptCall} className="w-14 h-14 rounded-full bg-[#FF2E9A] flex items-center justify-center text-[#0A0110]"><Phone size={22} /></button>
           </div>
         </div>
       )}
 
       {callStatus !== 'idle' && (
-        <div className="fixed inset-0 bg-[#0B141A] flex flex-col items-center justify-center z-50">
+        <div className="fixed inset-0 bg-[#0A0110] flex flex-col items-center justify-center z-50">
           {callIsVideo ? (
             <div className="relative w-full h-full" ref={pipContainerRef}>
-              <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover bg-[#202C33]" />
+              <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover bg-[#1A0B24]" />
               <div
                 ref={pipElRef}
                 onMouseDown={onPipMouseDown}
                 onTouchStart={onPipTouchStart}
                 style={{ position: 'absolute', left: 0, top: 0, touchAction: 'none' }}
-                className={`rounded-lg border border-[#2A3942] overflow-hidden cursor-grab active:cursor-grabbing select-none ${pipLarge ? 'w-44 h-64' : 'w-28 h-40'}`}
+                className={`rounded-lg border border-[#5C1F49] overflow-hidden cursor-grab active:cursor-grabbing select-none ${pipLarge ? 'w-44 h-64' : 'w-28 h-40'}`}
               >
                 <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover pointer-events-none" />
               </div>
               <div className="absolute top-6 left-0 right-0 text-center pointer-events-none">
-                <div className="text-[#E9EDEF] font-medium">{callPeerName}</div>
-                <div className="text-[#8696A0] text-xs">{callStatus === 'calling' ? 'Calling…' : 'In call'}</div>
+                <div className="text-[#FFE8F5] font-medium">{callPeerName}</div>
+                <div className="text-[#C98BB0] text-xs">{callStatus === 'calling' ? 'Calling…' : 'In call'}</div>
               </div>
             </div>
           ) : (
             <>
               <video ref={remoteVideoRef} autoPlay playsInline className="hidden" />
               <video ref={localVideoRef} autoPlay playsInline muted className="hidden" />
-              <div className="w-24 h-24 rounded-full bg-[#2A3942] flex items-center justify-center text-[#E9EDEF] text-3xl font-medium mb-5">
+              <div className="w-24 h-24 rounded-full bg-[#5C1F49] flex items-center justify-center text-[#FFE8F5] text-3xl font-medium mb-5">
                 {callPeerName.slice(0, 2).toUpperCase()}
               </div>
-              <div className="text-[#E9EDEF] text-lg font-medium mb-1">{callPeerName}</div>
-              <div className="text-[#8696A0] text-sm mb-10">{callStatus === 'calling' ? 'Calling…' : 'In call'}</div>
+              <div className="text-[#FFE8F5] text-lg font-medium mb-1">{callPeerName}</div>
+              <div className="text-[#C98BB0] text-sm mb-10">{callStatus === 'calling' ? 'Calling…' : 'In call'}</div>
             </>
           )}
           <div className="absolute bottom-10 left-0 right-0 flex items-center justify-center gap-6">
-            <button onClick={toggleMic} className="w-12 h-12 rounded-full bg-[#2A3942] flex items-center justify-center text-[#E9EDEF]">
+            <button onClick={toggleMic} className="w-12 h-12 rounded-full bg-[#5C1F49] flex items-center justify-center text-[#FFE8F5]">
               {micOn ? <Mic size={19} /> : <MicOff size={19} />}
             </button>
-            <button onClick={hangUp} className="w-14 h-14 rounded-full bg-[#F15C6D] flex items-center justify-center text-[#0B141A]"><PhoneOff size={22} /></button>
+            <button onClick={hangUp} className="w-14 h-14 rounded-full bg-[#FF3D68] flex items-center justify-center text-[#0A0110]"><PhoneOff size={22} /></button>
           </div>
         </div>
       )}
